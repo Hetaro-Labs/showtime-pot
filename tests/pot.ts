@@ -27,10 +27,10 @@ describe("pot", () => {
     console.log("Account Setup - Done!");
   });
 
-  it("Create Profile!", async () => {
-    let myName = 'Hello 1234567890 1234567890 1234567890';
+  it("Create Account!", async () => {
+    let myName = 'John Doe';
     // Add your test here.
-    let [pda, _bump] = anchor.web3.PublicKey.findProgramAddressSync(
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         anchor.utils.bytes.utf8.encode("profile"),
         payer.publicKey.toBuffer()
@@ -38,12 +38,21 @@ describe("pot", () => {
       program.programId
     );
 
+    let [pdaStakerList] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("staker_list"),
+        payer.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
     try{
-      const tx = await program.methods.createProfile({name: myName})
-        .accounts({profile: pda })
+      const tx = await program.methods.createAccount({name: myName})
+        .accounts({profile: pdaProfile, staker_list: pdaStakerList })
         .signers([payer])
         .rpc();
-      console.log("Create Profile TX:", tx);
+      console.log("Create Account TX:", tx);
     }catch(err){
       console.log(err);
     }
