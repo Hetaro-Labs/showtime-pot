@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { Program, BN } from "@coral-xyz/anchor";
 import { Pot } from "../target/types/pot";
 
 const KEY_1:Uint8Array = new Uint8Array([95,65,216,25,216,150,128,112,33,157,106,229,77,58,90,253,44,118,126,18,69,169,189,132,19,83,135,229,89,220,12,120,4,156,172,  51,18,253,222,113,223,90,148,3,250,60,102,154,14,204,177,48,169,214,1,58,67,219,198,115,50,121,55,41]);
@@ -91,6 +91,39 @@ describe("pot", () => {
     }
 
   });
+
+
+  it("Add Stake 1", async () => {
+
+    let [pdaStake] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("stake_accountA"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    let [pdaStakerList] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("staker_list"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+    try{
+      const tx = await program.methods.addStake({target: payer1.publicKey, lamports: new BN(0.02 * anchor.web3.LAMPORTS_PER_SOL)})
+        .accounts({signer: payer2.publicKey, stake_account: pdaStake, staker_list: pdaStakerList })
+        .signers([payer2])
+        .rpc();
+      console.log("Add Stake TX 1:", tx);
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
 
 
 
