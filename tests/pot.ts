@@ -113,11 +113,23 @@ describe("pot", () => {
 
 
     try{
-      const tx = await program.methods.addStake({target: payer1.publicKey, lamports: new BN(0.02 * anchor.web3.LAMPORTS_PER_SOL)})
+      let tx = await program.methods.addStake({target: payer1.publicKey, lamports: new BN(1000)})
         .accounts({signer: payer2.publicKey, stake_account: pdaStake, staker_list: pdaStakerList })
         .signers([payer2])
         .rpc();
       console.log("Add Stake TX 1:", tx);
+
+      tx = await program.methods.addStake({target: payer1.publicKey, lamports: new BN(1001)})
+        .accounts({signer: payer2.publicKey, stake_account: pdaStake, staker_list: pdaStakerList })
+        .signers([payer2])
+        .rpc();
+      console.log("Add Stake TX 2:", tx);
+      tx = await program.methods.addStake({target: payer1.publicKey, lamports: new BN(1002)})
+        .accounts({signer: payer2.publicKey, stake_account: pdaStake, staker_list: pdaStakerList })
+        .signers([payer2])
+        .rpc();
+      console.log("Add Stake TX 3:", tx);
+ 
     }catch(err){
       console.log(err);
     }

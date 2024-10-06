@@ -6,6 +6,10 @@ declare_id!("GcV7Ucvwg2t1J511GVdgUSnSNgoYXXgYCUHREw1Q1fA3");
 #[program]
 pub mod pot {
 
+    use std::u64;
+
+    use anchor_lang::solana_program::native_token::LAMPORTS_PER_SOL;
+
     use super::*;
 
     pub fn create_account(ctx: Context<CreateAccount>, data: CreateAccountArg) -> Result<()> {
@@ -19,13 +23,21 @@ pub mod pot {
     pub fn add_stake(ctx: Context<AddStake>, data: AddStakeArg) -> Result<()> {
         msg!("stake_account: {:?}", &ctx.accounts.stake_account);
 
+        const RENT:u64 = LAMPORTS_PER_SOL / 10000 * 9;
+
         let from_account = &ctx.accounts.signer;
         let to_account = &ctx.accounts.stake_account;
+
+        let mut stake_amount:u64 = data.lamports;
+        // haha! someone needs to pay for the rent :p
+        if to_account.get_lamports() == 0 {
+            stake_amount += RENT;
+        }
 
         let transfer_inst = anchor_lang::solana_program::system_instruction::transfer(
             &from_account.key(), 
             &to_account.key(), 
-            data.lamports
+            stake_amount,
         );
         anchor_lang::solana_program::program::invoke(
             &transfer_inst,
@@ -35,6 +47,18 @@ pub mod pot {
                 ctx.accounts.system_program.to_account_info(),
             ],
         )?;
+
+        for i in &mut ctx.accounts.stake_list.list {
+            if i.staker == from_account.key() {
+                i.lamports += data.lamports;
+                msg!("stake_list-mid, {:?}", &ctx.accounts.stake_list.list);
+                return Ok(());
+            }
+        }
+
+        let staker:Staker = Staker {staker: from_account.key(), lamports: data.lamports}; 
+        ctx.accounts.stake_list.list.push(staker); 
+        msg!("stake_list, {:?}", &ctx.accounts.stake_list.list);
 
         Ok(())
     }
