@@ -97,7 +97,7 @@ describe("pot", () => {
 
     let [pdaStake] = anchor.web3.PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("stake_accountA"),
+        anchor.utils.bytes.utf8.encode("stake_account"),
         payer1.publicKey.toBuffer()
       ],
       program.programId
@@ -135,6 +135,51 @@ describe("pot", () => {
     }
 
   });
+
+  it("Create Event 1", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("profile"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+    try{
+      let now = Math.round(new Date().getTime());
+      let tx = await program.methods.createEvent({
+        eventName: event_name,
+        eventDescription: 'This is Event 1',
+        eventStartTime: new BN(now), 
+        eventEndTime: new BN(now + 1000), 
+        betLamports: new BN(0),
+        guests: [payer2.publicKey],
+      })
+        .accounts({signer: payer1.publicKey, profile: pdaProfile, event: pdaEvent})
+        .signers([payer1])
+        .rpc();
+      console.log("Create Profile TX 1:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+
 
 
 

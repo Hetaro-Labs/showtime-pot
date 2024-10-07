@@ -63,8 +63,9 @@ pub mod pot {
         Ok(())
     }
 
-
-
+    pub fn create_event(ctx: Context<CreateEvent>, data: CreateEventArg) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[account]    
@@ -98,6 +99,45 @@ impl StakerList {
     }
 }
 
+#[account]    
+#[derive(Default, Debug)]    
+pub struct Event {    
+    host: Pubkey,
+    guests: Vec<EventGuest>,
+    event_name: String,    
+    event_description: String, 
+    event_start_time: i64,
+    event_end_time: i64,
+    threshold: u8,
+    bet_lamports: u64,
+    attendances: Vec<Pubkey>,
+} 
+
+impl Event {
+    pub fn get_init_account_size(data: &CreateEventArg) -> usize {
+        let mut size = 8 + 4 * 2; // anchor id + vectorx2    
+        size += data.event_name.len();
+        size += data.event_description.len();
+        size += size_of::<Event>();    
+        size += size_of::<EventGuest>() * (data.guests.len() + 1);    
+        size += size_of::<Pubkey>() * (data.guests.len() + 1);    
+        size
+    }
+}
+
+
+
+
+#[account]    
+#[derive(Default, Debug)]    
+pub struct EventGuest {    
+    key: Pubkey,
+    is_betted: bool,
+    agree_vote: bool,
+} 
+
+
+
 #[account]
 #[derive(Debug)]
 pub struct CreateAccountArg{
@@ -110,6 +150,18 @@ pub struct AddStakeArg{
     target: Pubkey,
     lamports: u64,
 }
+
+#[account]
+#[derive(Debug)]
+pub struct CreateEventArg{
+    event_name: String,
+    event_description: String, 
+    event_start_time: i64,
+    event_end_time: i64,
+    bet_lamports: u64,
+    guests: Vec<Pubkey>,
+}
+
 
 
 #[derive(Accounts)]
@@ -143,5 +195,19 @@ pub struct AddStake<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+#[instruction(data: CreateEventArg)]
+pub struct CreateEvent<'info> {
+    #[account(seeds = [b"profile", signer.key().as_ref()], bump )]
+    pub profile: Account<'info, Profile>,
 
+
+    #[account(init, payer = signer, space = Event::get_init_account_size(&data), 
+        seeds = [b"event", signer.key().as_ref(), data.event_name.as_ref()], bump )]
+    pub event: Account<'info, Event>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
 
