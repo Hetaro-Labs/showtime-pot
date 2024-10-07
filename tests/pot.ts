@@ -331,6 +331,83 @@ describe("pot", () => {
 
   });
 
+  it("ClaimEventReward 1 - payer1", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaBetPot] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("bet_pot"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    console.log('====', pdaBetPot.toBase58());
+ 
+    try{
+      let tx = await program.methods.claimEventReward({
+        eventName: event_name,
+      })
+        .accounts({signer: payer1.publicKey, host: payer1.publicKey, event: pdaEvent, bet_pot: pdaBetPot})
+        .signers([payer1])
+        .rpc();
+      console.log("ClaimEventReward TX 1:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+  it("ClaimEventReward 2 - payer2", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaBetPot] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("bet_pot"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    console.log('====', pdaBetPot.toBase58());
+ 
+    try{
+      let tx = await program.methods.claimEventReward({
+        eventName: event_name,
+      })
+        .accounts({signer: payer2.publicKey, host: payer1.publicKey, event: pdaEvent, bet_pot: pdaBetPot})
+        .signers([payer2])
+        .rpc();
+      console.log("ClaimEventReward TX 2:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+
 
 
 

@@ -248,6 +248,90 @@ pub mod pot {
         }
     }
 
+    pub fn claim_event_reward(ctx: Context<ClaimEventReward>, data: ClaimEventRewardArg) -> Result<()> {
+
+        let bump = ctx.bumps.bet_pot;
+        msg!("bump {:?}", bump);
+
+        let host_key = ctx.accounts.host.key();
+        let bet_pot_seeds = &[
+            b"bet_pot",    // Static string as seed
+            host_key.as_ref(),       // Event public key as seed
+            &[bump],                  // Bump seed
+        ];
+
+        if ctx.accounts.event.success == false {
+            return err!(MyError::EventCompleted); 
+        }
+
+        // check host == event.host
+        if ctx.accounts.host.key() != ctx.accounts.event.host {
+            return err!(MyError::AccountNotMatch); 
+        }
+
+        if !ctx.accounts.event.attendees.contains(ctx.accounts.signer.key){
+            return err!(MyError::AccountNotMatch); 
+        }
+
+        let bet_lamports = ctx.accounts.event.bet_lamports;
+        let mut bet_total:u64 = 0;
+
+        for g in &ctx.accounts.event.guests {
+            if g.is_betted {
+                bet_total += bet_lamports;
+            }
+        }
+        
+        let reward_per_attendee:u64 = bet_total / ctx.accounts.event.attendees.len() as u64;
+
+        let mut done = false; 
+        for g in &mut ctx.accounts.event.guests {
+            if g.key == ctx.accounts.signer.key() {
+                if g.is_claimed == true {
+                    return err!(MyError::AttendeesAlreadyClaimed) 
+                }
+
+                /*
+                ctx.accounts.bet_pot.to_account_info().sub_lamports(reward_per_attendee)?;
+                ctx.accounts.signer.to_account_info().add_lamports(reward_per_attendee)?;
+                */
+                // Transfer lamports from the PDA to the signer
+                let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
+                    &ctx.accounts.bet_pot.key(),
+                    &ctx.accounts.signer.key(),
+                    reward_per_attendee,
+                );
+
+                // Use `invoke_signed` to sign on behalf of the PDA
+                anchor_lang::solana_program::program::invoke_signed(
+                    &transfer_instruction,
+                    &[
+                        ctx.accounts.bet_pot.to_account_info(),
+                        ctx.accounts.signer.to_account_info(),
+                        ctx.accounts.system_program.to_account_info(),
+                    ],
+                    &[bet_pot_seeds], // Pass the seeds for the PDA to sign the transaction
+                )?;
+                g.is_claimed = true;
+
+                done = true;
+                break;
+            }
+        }
+
+
+        if done {
+
+
+
+            Ok(())
+        }else{
+            err!(MyError::AttendeesNotMatch) 
+        }
+
+    }
+
+ 
 }
 
 #[account]    
@@ -366,6 +450,13 @@ pub struct AgreeEventAttendeesArg {
     attendees: Vec<Pubkey>,
 }
 
+#[account]
+#[derive(Debug)]
+pub struct ClaimEventRewardArg {
+    event_name: String,
+}
+
+
 
 
 #[derive(Accounts)]
@@ -465,6 +556,28 @@ pub struct AgreeEventAttendees<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+#[instruction(data: ClaimEventRewardArg)]
+pub struct ClaimEventReward<'info> {
+
+    /// CHECK: it is ok
+    #[account()]
+    pub host: SystemAccount<'info>,
+
+    #[account(mut, seeds = [b"event", host.key().as_ref(), data.event_name.as_ref()], bump )]
+    pub event: Account<'info, Event>,
+
+
+    /// CHECK: it is ok
+    #[account(mut, seeds = [b"bet_pot", host.key().as_ref()], bump )]
+    pub bet_pot: SystemAccount<'info>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+
 
 
 
@@ -497,6 +610,9 @@ pub enum MyError {
     #[msg("Attendees has already voted!")]
     AttendeesAlreadyVoted,
 
+    #[msg("Attendees has already claimed!")]
+    AttendeesAlreadyClaimed,
+
     #[msg("Event has been completed!")]
     EventCompleted,
 
@@ -504,8 +620,5 @@ pub enum MyError {
     EventNotStarted,
 }
 
-pub enum TheError {
-    MyError(MyError),
-}
 
 
