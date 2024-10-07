@@ -10,7 +10,7 @@ const BASIC_RENT:u64 = LAMPORTS_PER_SOL / 10000 * 9;
 #[program]
 pub mod pot {
 
-    use std::u64;
+    use std::{borrow::BorrowMut, u64};
 
     use super::*;
 
@@ -143,12 +143,40 @@ pub mod pot {
     }
 
     pub fn declare_event_attendees(ctx: Context<DeclareEventAttendees>, data: DeclareEventAttendeesArg) -> Result<()> {
-        // TODO: check host === signer === event.host
-        // TODO: attendees includes in betted guests 
-        // TODO: create attendees list 
-        // TODO: host vote for itself 
+        // TODO: check signer === event.host
+        if ctx.accounts.signer.key() != ctx.accounts.event.host {
+           return err!(MyError::AccountNotMatch); 
+        }
 
-        //let event = &mut ctx.accounts.event;
+        if ctx.accounts.event.attendees.len() != 0 {
+           return err!(MyError::AttendeesAlreadyDeclared); 
+        }
+        // attendees includes in betted guests 
+        let mut betted_guest_keys: HashSet<Pubkey> = HashSet::new();
+        for g in &ctx.accounts.event.guests{
+            if g.is_betted {
+                betted_guest_keys.insert(g.key);
+            }
+        }
+        let attendees_set: HashSet<Pubkey> = data.attendees.into_iter().collect();
+
+        // create attendees list 
+        for a in &attendees_set {
+            if !betted_guest_keys.contains(a) {
+                return err!(MyError::AccountNotMatch); 
+            }
+            ctx.accounts.event.attendees.push(a.to_owned());
+        }
+
+        // host vote for itself 
+        for g in &mut ctx.accounts.event.guests {
+            if g.key == ctx.accounts.signer.key() {
+                g.agree_vote = true;
+                ctx.accounts.event.signed += 1;
+                break;
+            }
+        }
+
         Ok(())
     }
 
@@ -337,11 +365,8 @@ pub struct BetOnEvent<'info> {
 #[instruction(data: DeclareEventAttendeesArg)]
 pub struct DeclareEventAttendees<'info> {
 
-    /// CHECK: it is ok
-    #[account()]
-    pub host: SystemAccount<'info>,
 
-    #[account(mut, seeds = [b"event", host.key().as_ref(), data.event_name.as_ref()], bump )]
+    #[account(mut, seeds = [b"event", signer.key().as_ref(), data.event_name.as_ref()], bump )]
     pub event: Account<'info, Event>,
 
     #[account(mut)]
@@ -358,6 +383,13 @@ pub enum MyError {
 
     #[msg("BetOnEvent: Not a guest!")]
     BetOnEventNotAGuest,
+
+
+    #[msg("Account doesn't match!")]
+    AccountNotMatch,
+
+    #[msg("Attendees has already declared!")]
+    AttendeesAlreadyDeclared,
 }
 
 pub enum TheError {
