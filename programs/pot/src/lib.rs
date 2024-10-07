@@ -12,7 +12,6 @@ pub mod pot {
 
     use std::u64;
 
-
     use super::*;
 
     pub fn create_account(ctx: Context<CreateAccount>, data: CreateAccountArg) -> Result<()> {
@@ -84,6 +83,7 @@ pub mod pot {
                 key: k,
                 is_betted: is_betted,
                 agree_vote: false,
+                is_claimed: false,
             };
             event.guests.push(g);
         }
@@ -93,8 +93,8 @@ pub mod pot {
         event.event_start_time = data.event_start_time;
         event.event_end_time = data.event_end_time;
         event.host = ctx.accounts.signer.key();
-        event.attendances = vec![];
-        event.threshold = 2;
+        event.attendees = vec![];
+        event.signed = 0;
         event.bet_lamports = bet_lamports;
 
         //msg!("event, {:?}", &ctx.accounts.event);
@@ -141,6 +141,18 @@ pub mod pot {
         }
         return err!(MyError::BetOnEventNotAGuest);
     }
+
+    pub fn declare_event_attendees(ctx: Context<DeclareEventAttendees>, data: DeclareEventAttendeesArg) -> Result<()> {
+        // TODO: check host === signer === event.host
+        // TODO: attendees includes in betted guests 
+        // TODO: create attendees list 
+        // TODO: host vote for itself 
+
+        //let event = &mut ctx.accounts.event;
+        Ok(())
+    }
+
+
 }
 
 #[account]    
@@ -183,9 +195,9 @@ pub struct Event {
     event_description: String, 
     event_start_time: i64,
     event_end_time: i64,
-    threshold: u8,
     bet_lamports: u64,
-    attendances: Vec<Pubkey>,
+    attendees: Vec<Pubkey>,
+    signed: u8,
 } 
 
 impl Event {
@@ -209,6 +221,7 @@ pub struct EventGuest {
     key: Pubkey,
     is_betted: bool,
     agree_vote: bool,
+    is_claimed: bool,
 } 
 
 
@@ -243,7 +256,12 @@ pub struct BetOnEventArg{
     event_name: String,
 }
 
-
+#[account]
+#[derive(Debug)]
+pub struct DeclareEventAttendeesArg {
+    event_name: String,
+    attendees: Vec<Pubkey>,
+}
 
 
 #[derive(Accounts)]
@@ -314,6 +332,24 @@ pub struct BetOnEvent<'info> {
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+#[instruction(data: DeclareEventAttendeesArg)]
+pub struct DeclareEventAttendees<'info> {
+
+    /// CHECK: it is ok
+    #[account()]
+    pub host: SystemAccount<'info>,
+
+    #[account(mut, seeds = [b"event", host.key().as_ref(), data.event_name.as_ref()], bump )]
+    pub event: Account<'info, Event>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+
 
 #[error_code]
 pub enum MyError {
