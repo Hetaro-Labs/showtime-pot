@@ -1,15 +1,17 @@
 use anchor_lang::prelude::*;
 use std::mem::size_of;
 use std::collections::HashSet;
+use anchor_lang::solana_program::native_token::LAMPORTS_PER_SOL;
 
 declare_id!("GcV7Ucvwg2t1J511GVdgUSnSNgoYXXgYCUHREw1Q1fA3");
+
+const BASIC_RENT:u64 = LAMPORTS_PER_SOL / 10000 * 9;
 
 #[program]
 pub mod pot {
 
     use std::u64;
 
-    use anchor_lang::solana_program::native_token::LAMPORTS_PER_SOL;
 
     use super::*;
 
@@ -24,15 +26,13 @@ pub mod pot {
     pub fn add_stake(ctx: Context<AddStake>, data: AddStakeArg) -> Result<()> {
         msg!("stake_account: {:?}", &ctx.accounts.stake_account);
 
-        const RENT:u64 = LAMPORTS_PER_SOL / 10000 * 9;
-
         let from_account = &ctx.accounts.signer;
         let to_account = &ctx.accounts.stake_account;
 
         let mut stake_amount:u64 = data.lamports;
         // haha! someone needs to pay for the rent :p
         if to_account.get_lamports() == 0 {
-            stake_amount += RENT;
+            stake_amount += BASIC_RENT;
         }
 
         let transfer_inst = anchor_lang::solana_program::system_instruction::transfer(
@@ -99,6 +99,47 @@ pub mod pot {
 
         //msg!("event, {:?}", &ctx.accounts.event);
         Ok(())
+    }
+
+    pub fn bet_on_event(ctx: Context<BetOnEvent>, data: BetOnEventArg) -> Result<()> {
+        let bet_account = &ctx.accounts.bet_pot;
+        let host = &ctx.accounts.host;
+        //let event = &ctx.accounts.event;
+        let signer = &ctx.accounts.signer;
+
+        let mut bet_amount:u64 = ctx.accounts.event.bet_lamports;
+        for g in &mut ctx.accounts.event.guests {
+            if g.key == signer.key() {
+                if g.is_betted {
+                    return err!(MyError::BetOnEventAlreadyBetted);
+                };
+
+
+                if bet_account.get_lamports() == 0 {
+                    bet_amount += BASIC_RENT;
+                }
+
+                let transfer_inst = anchor_lang::solana_program::system_instruction::transfer(
+                    &signer.key(), 
+                    &bet_account.key(), 
+                    bet_amount,
+                );
+                anchor_lang::solana_program::program::invoke(
+                    &transfer_inst,
+                    &[
+                        signer.to_account_info(),
+                        bet_account.to_account_info(),
+                        ctx.accounts.system_program.to_account_info(),
+                    ],
+                )?;
+
+                g.is_betted = true;
+                msg!("guest: {:?}", &g);
+                return Ok(());
+
+            };
+        }
+        return err!(MyError::BetOnEventNotAGuest);
     }
 }
 
@@ -196,6 +237,13 @@ pub struct CreateEventArg{
     guests: Vec<Pubkey>,
 }
 
+#[account]
+#[derive(Debug)]
+pub struct BetOnEventArg{
+    event_name: String,
+}
+
+
 
 
 #[derive(Accounts)]
@@ -244,4 +292,40 @@ pub struct CreateEvent<'info> {
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+#[instruction(data: BetOnEventArg)]
+pub struct BetOnEvent<'info> {
+    #[account(seeds = [b"profile", signer.key().as_ref()], bump )]
+    pub profile: Account<'info, Profile>,
+
+    /// CHECK: it is ok
+    #[account()]
+    pub host: SystemAccount<'info>,
+
+    #[account(mut, seeds = [b"event", host.key().as_ref(), data.event_name.as_ref()], bump )]
+    pub event: Account<'info, Event>,
+
+    /// CHECK: it is ok
+    #[account(mut, seeds = [b"bet_pot", host.key().as_ref()], bump )]
+    pub bet_pot: SystemAccount<'info>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[error_code]
+pub enum MyError {
+    #[msg("BetOnEvent: Already Betted!")]
+    BetOnEventAlreadyBetted,
+
+    #[msg("BetOnEvent: Not a guest!")]
+    BetOnEventNotAGuest,
+}
+
+pub enum TheError {
+    MyError(MyError),
+}
+
 

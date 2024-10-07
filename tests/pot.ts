@@ -182,6 +182,97 @@ describe("pot", () => {
   });
 
 
+  it("Bet On Event 1 - payer1", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaBetPot] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("bet_pot"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("profile"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+
+    try{
+      let tx = await program.methods.betOnEvent({
+        eventName: event_name,
+      })
+        .accounts({signer: payer1.publicKey, host: payer1.publicKey, event: pdaEvent, bet_pot: pdaBetPot, profile: pdaProfile})
+        .signers([payer1])
+        .rpc();
+      console.log("Bet On Event TX 1:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+
+  it("Bet On Event 1 - payer2", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaBetPot] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("bet_pot"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("profile"),
+        payer2.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+
+    try{
+      let tx = await program.methods.betOnEvent({
+        eventName: event_name,
+      })
+        .accounts({signer: payer2.publicKey, host: payer1.publicKey, event: pdaEvent, bet_pot: pdaBetPot, profile: pdaProfile})
+        .signers([payer2])
+        .rpc();
+      console.log("Bet On Event TX 2:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
 
 
 
