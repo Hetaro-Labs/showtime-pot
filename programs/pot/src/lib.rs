@@ -181,7 +181,23 @@ pub mod pot {
         Ok(())
     }
     pub fn agree_event_attendees(ctx: Context<AgreeEventAttendees>, data: AgreeEventAttendeesArg) -> Result<()> {
-        // TODO: check host === event.host
+        // TODO: check event.success and event
+        //
+
+        let now = Clock::get()?.unix_timestamp;
+        if ctx.accounts.event.success == true {
+            return err!(MyError::EventCompleted); 
+        }
+
+        if now > ctx.accounts.event.event_end_time {
+            return err!(MyError::EventCompleted); 
+        }
+
+        if now < ctx.accounts.event.event_start_time {
+            return err!(MyError::EventNotStarted); 
+        }
+
+        // check host == event.host
         if ctx.accounts.host.key() != ctx.accounts.event.host {
             return err!(MyError::AccountNotMatch); 
         }
@@ -205,6 +221,9 @@ pub mod pot {
         let mut done = false; 
         for g in &mut ctx.accounts.event.guests {
             if g.key == ctx.accounts.signer.key() {
+                if g.agree_vote == true {
+                    return err!(MyError::AttendeesAlreadyVoted) 
+                }
                 g.agree_vote = true;
                 ctx.accounts.event.signed += 1;
                 if ctx.accounts.event.signed as usize == ctx.accounts.event.attendees.len(){
@@ -217,13 +236,16 @@ pub mod pot {
         }
 
         if done {
+            /*
             msg!("signed: {:?}", ctx.accounts.event.signed);
             msg!("success: {:?}", ctx.accounts.event.success);
             msg!("guests: {:?}", ctx.accounts.event.guests);
-            return Ok(());
-        }
+            */
+            Ok(())
+        }else{
 
-        err!(MyError::AttendeesNotMatch) 
+            err!(MyError::AttendeesNotMatch) 
+        }
     }
 
 }
@@ -471,6 +493,15 @@ pub enum MyError {
 
     #[msg("Signer is not an attendee!")]
     NotAttendee,
+
+    #[msg("Attendees has already voted!")]
+    AttendeesAlreadyVoted,
+
+    #[msg("Event has been completed!")]
+    EventCompleted,
+
+    #[msg("Event has not started!")]
+    EventNotStarted,
 }
 
 pub enum TheError {

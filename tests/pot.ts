@@ -160,7 +160,7 @@ describe("pot", () => {
 
 
     try{
-      let now = Math.round(new Date().getTime());
+      let now = Math.round(new Date().getTime()/1000);
       let tx = await program.methods.createEvent({
         eventName: event_name,
         eventDescription: 'This is Event 1',
