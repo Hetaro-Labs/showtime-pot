@@ -27,7 +27,8 @@ describe("pot", () => {
   it("Account Setup", async () => {
     console.log("Account Setup - Start!");
     await provider1.connection.requestAirdrop(payer1.publicKey, 100*anchor.web3.LAMPORTS_PER_SOL);
-    await provider2.connection.requestAirdrop(payer2.publicKey, 100*anchor.web3.LAMPORTS_PER_SOL);
+    await provider1.connection.requestAirdrop(payer2.publicKey, 100*anchor.web3.LAMPORTS_PER_SOL);
+    await provider1.connection.requestAirdrop(payer3.publicKey, 100*anchor.web3.LAMPORTS_PER_SOL);
     await sleep(300);
     console.log("Account Setup - Done!");
   });
@@ -93,6 +94,38 @@ describe("pot", () => {
     }
 
   });
+
+  it("Create Account 3", async () => {
+
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("profile"),
+        payer3.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    let [pdaStakerList] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("staker_list"),
+        payer3.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+    try{
+      const tx = await program.methods.createAccount({name: 'Jane Doe'})
+        .accounts({signer: payer3.publicKey, profile: pdaProfile, staker_list: pdaStakerList })
+        .signers([payer3])
+        .rpc();
+      console.log("Create Account TX 3:", tx);
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
 
 
   it("Add Stake 1", async () => {
@@ -272,6 +305,53 @@ describe("pot", () => {
     }
 
   });
+
+  it("Bet On Event 1 - payer3", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    let [pdaBetPot] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("bet_pot"),
+        payer1.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+    let [pdaProfile] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("profile"),
+        payer3.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+
+
+    try{
+      let tx = await program.methods.betOnEvent({
+        eventName: event_name,
+      })
+        .accounts({signer: payer3.publicKey, host: payer1.publicKey, event: pdaEvent, bet_pot: pdaBetPot, profile: pdaProfile})
+        .signers([payer3])
+        .rpc();
+      console.log("Bet On Event TX 3:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+
 
   it("DeclareEventAttendees 1", async () => {
     let event_name = 'Event 1';
