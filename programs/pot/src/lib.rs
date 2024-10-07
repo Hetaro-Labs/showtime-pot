@@ -96,6 +96,7 @@ pub mod pot {
         event.attendees = vec![];
         event.signed = 0;
         event.bet_lamports = bet_lamports;
+        event.success = false;
 
         //msg!("event, {:?}", &ctx.accounts.event);
         Ok(())
@@ -173,13 +174,57 @@ pub mod pot {
             if g.key == ctx.accounts.signer.key() {
                 g.agree_vote = true;
                 ctx.accounts.event.signed += 1;
-                break;
+                return Ok(());
             }
         }
 
         Ok(())
     }
+    pub fn agree_event_attendees(ctx: Context<AgreeEventAttendees>, data: AgreeEventAttendeesArg) -> Result<()> {
+        // TODO: check host === event.host
+        if ctx.accounts.host.key() != ctx.accounts.event.host {
+            return err!(MyError::AccountNotMatch); 
+        }
 
+        if ctx.accounts.event.attendees.len() == 0 {
+           return err!(MyError::AttendeesNotDeclared); 
+        }
+
+        let attendees_set: HashSet<Pubkey> = data.attendees.into_iter().collect();
+
+        if !attendees_set.contains(ctx.accounts.signer.key) {
+                return err!(MyError::NotAttendee); 
+        }
+
+        for a in &ctx.accounts.event.attendees{
+            if !attendees_set.contains(&a){
+                return err!(MyError::AttendeesNotMatch); 
+            }
+        }
+
+        let mut done = false; 
+        for g in &mut ctx.accounts.event.guests {
+            if g.key == ctx.accounts.signer.key() {
+                g.agree_vote = true;
+                ctx.accounts.event.signed += 1;
+                if ctx.accounts.event.signed as usize == ctx.accounts.event.attendees.len(){
+                    ctx.accounts.event.success = true;
+                }; 
+
+                done = true;
+                break;
+            }
+        }
+
+        if done {
+            msg!("signed: {:?}", ctx.accounts.event.signed);
+            msg!("success: {:?}", ctx.accounts.event.success);
+            msg!("guests: {:?}", ctx.accounts.event.guests);
+            return Ok(());
+        }
+
+        err!(MyError::AttendeesNotMatch) 
+    }
 
 }
 
@@ -226,6 +271,7 @@ pub struct Event {
     bet_lamports: u64,
     attendees: Vec<Pubkey>,
     signed: u8,
+    success: bool,
 } 
 
 impl Event {
@@ -290,6 +336,14 @@ pub struct DeclareEventAttendeesArg {
     event_name: String,
     attendees: Vec<Pubkey>,
 }
+
+#[account]
+#[derive(Debug)]
+pub struct AgreeEventAttendeesArg {
+    event_name: String,
+    attendees: Vec<Pubkey>,
+}
+
 
 
 #[derive(Accounts)]
@@ -365,7 +419,6 @@ pub struct BetOnEvent<'info> {
 #[instruction(data: DeclareEventAttendeesArg)]
 pub struct DeclareEventAttendees<'info> {
 
-
     #[account(mut, seeds = [b"event", signer.key().as_ref(), data.event_name.as_ref()], bump )]
     pub event: Account<'info, Event>,
 
@@ -373,6 +426,23 @@ pub struct DeclareEventAttendees<'info> {
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+#[instruction(data: AgreeEventAttendeesArg)]
+pub struct AgreeEventAttendees<'info> {
+
+    /// CHECK: it is ok
+    #[account()]
+    pub host: SystemAccount<'info>,
+
+    #[account(mut, seeds = [b"event", host.key().as_ref(), data.event_name.as_ref()], bump )]
+    pub event: Account<'info, Event>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 
 
 
@@ -390,6 +460,17 @@ pub enum MyError {
 
     #[msg("Attendees has already declared!")]
     AttendeesAlreadyDeclared,
+
+
+    #[msg("Attendees has not declared!")]
+    AttendeesNotDeclared,
+
+    #[msg("Attendees do not match!")]
+    AttendeesNotMatch,
+
+
+    #[msg("Signer is not an attendee!")]
+    NotAttendee,
 }
 
 pub enum TheError {

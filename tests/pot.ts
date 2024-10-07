@@ -302,6 +302,39 @@ describe("pot", () => {
 
   });
 
+  it("AgreeEventAttendees 1 - payer2", async () => {
+    let event_name = 'Event 1';
+
+    let [pdaEvent] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("event"),
+        payer1.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(event_name),
+      ],
+      program.programId
+    );
+
+    try{
+      let tx = await program.methods.agreeEventAttendees({
+        eventName: event_name,
+        attendees: [payer1.publicKey, payer2.publicKey],
+      })
+        .accounts({signer: payer2.publicKey, host: payer1.publicKey, event: pdaEvent})
+        .signers([payer2])
+        .rpc();
+      console.log("AgreeEventAttendees TX 1:", tx);
+
+ 
+    }catch(err){
+      console.log(err);
+    }
+
+  });
+
+
+
+
+
 
 
 
