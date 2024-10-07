@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use std::mem::size_of;
+use std::collections::HashSet;
 
 declare_id!("GcV7Ucvwg2t1J511GVdgUSnSNgoYXXgYCUHREw1Q1fA3");
 
@@ -64,6 +65,39 @@ pub mod pot {
     }
 
     pub fn create_event(ctx: Context<CreateEvent>, data: CreateEventArg) -> Result<()> {
+
+        let event = &mut ctx.accounts.event;
+        // if bet_lamports > 0, this event needs betting, 
+        let (is_betted, bet_lamports) = if data.bet_lamports > 0 {
+            (false,data.bet_lamports)
+        }else{
+            // this event doesn't need betting
+            (true,0)
+        };
+
+        // remove duplication
+        let mut guest_keys: HashSet<Pubkey> = data.guests.into_iter().collect();
+        guest_keys.insert(ctx.accounts.signer.key());
+        //msg!("guest_key, {:?} {:?}", &guest_keys.len(), &guest_keys);
+        for k in guest_keys.into_iter() {
+            let g = EventGuest {
+                key: k,
+                is_betted: is_betted,
+                agree_vote: false,
+            };
+            event.guests.push(g);
+        }
+
+        event.event_name = data.event_name;
+        event.event_description = data.event_description;
+        event.event_start_time = data.event_start_time;
+        event.event_end_time = data.event_end_time;
+        event.host = ctx.accounts.signer.key();
+        event.attendances = vec![];
+        event.threshold = 2;
+        event.bet_lamports = bet_lamports;
+
+        //msg!("event, {:?}", &ctx.accounts.event);
         Ok(())
     }
 }
