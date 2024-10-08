@@ -12,6 +12,7 @@ const port = 3000;
 
 router.get('/sys/health', routers.health);
 router.get('/', routers.ping);
+router.get('/actions.json', routers.cors, routers.actionsJSON.getActionsJSON);
 
 app.use(logger());
 app.use(router.routes());
