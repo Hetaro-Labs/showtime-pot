@@ -19,6 +19,7 @@ pub mod pot {
         ctx.accounts.profile.name = data.name; 
         ctx.accounts.profile.time_created = now;
         ctx.accounts.profile.time_updated= now;
+
         Ok(())
     }
 
@@ -65,6 +66,9 @@ pub mod pot {
 
     pub fn create_event(ctx: Context<CreateEvent>, data: CreateEventArg) -> Result<()> {
 
+
+        let now = Clock::get()?.unix_timestamp;
+
         let event = &mut ctx.accounts.event;
         // if bet_lamports > 0, this event needs betting, 
         let (is_betted, bet_lamports) = if data.bet_lamports > 0 {
@@ -97,6 +101,13 @@ pub mod pot {
         event.signed = 0;
         event.bet_lamports = bet_lamports;
         event.success = false;
+
+        let event_item = EventItem {
+            event_name: event.event_name.clone(),
+            event_create_time: now,
+        };
+
+        ctx.accounts.event_list.events.push(event_item);
 
         //msg!("event, {:?}", &ctx.accounts.event);
         Ok(())
@@ -517,6 +528,9 @@ pub struct CreateAccount<'info> {
     #[account(init, payer = signer, space = 8+4+size_of::<StakerList>(), seeds = [b"staker_list", signer.key().as_ref()], bump )]
     pub stake_list: Account<'info, StakerList>,
 
+    #[account(init, payer = signer, space = EventList::get_init_account_size(), seeds = [b"event_list", signer.key().as_ref()], bump )]
+    pub event_list: Account<'info, EventList>,
+
     #[account(mut)]
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -548,6 +562,13 @@ pub struct CreateEvent<'info> {
     #[account(init, payer = signer, space = Event::get_init_account_size(&data), 
         seeds = [b"event", signer.key().as_ref(), data.event_name.as_ref()], bump )]
     pub event: Account<'info, Event>,
+
+
+    #[account(mut, 
+        realloc = event_list.get_account_size(&data.event_name),
+        realloc::payer = signer, realloc::zero = false,
+        seeds = [b"event_list", signer.key().as_ref()], bump )]
+    pub event_list: Account<'info, EventList>,
 
     #[account(mut)]
     pub signer: Signer<'info>,
