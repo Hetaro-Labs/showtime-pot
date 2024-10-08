@@ -5,6 +5,7 @@ import demo from './demo';
 import actionsJSON from './actionsjson';
 import createAccount from './createaccount';
 import createEvent from './createevent';
+import joinEvent from './joinevent';
 
 
 
@@ -34,5 +35,6 @@ export default {
   actionsJSON,
   createAccount,
   createEvent,
+  joinEvent,
 }
 

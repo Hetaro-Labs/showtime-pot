@@ -24,6 +24,11 @@ router.get('/createevent', routers.cors, routers.createEvent.get);
 router.options('/createevent', routers.cors, routers.createEvent.get);
 router.post('/createevent', routers.cors, routers.createEvent.post);
 
+router.get('/joinevent', routers.cors, routers.joinEvent.get);
+router.options('/joinevent', routers.cors, routers.joinEvent.get);
+router.post('/joinevent', routers.cors, routers.joinEvent.post);
+
+
 
 
 app.use(logger());
