@@ -1,16 +1,11 @@
 import {ParameterizedContext} from 'koa';
 import * as SA from '@solana/actions';
 import sleep from '../lib/sleep';
+import demo from './demo';
 import actionsJSON from './actionsjson';
+import createAccount from './createaccount';
 
 
-function genMw(config: MyConf){
-  return async function mw(ctx:ParameterizedContext, next:Function){
-    ctx.state.config = config;
-    await sleep(10);
-    await next(ctx);
-  }
-}
 
 async function ping(ctx:ParameterizedContext, next:Function){
   ctx.body = 'Pong!\n';
@@ -32,9 +27,10 @@ async function cors(ctx:ParameterizedContext, next:Function){
 
 export default {
   cors,
-  genMw,
   health,
   ping,
+  demo,
   actionsJSON,
+  createAccount,
 }
 
