@@ -6,6 +6,7 @@ import actionsJSON from './actionsjson';
 import createAccount from './createaccount';
 import createEvent from './createevent';
 import joinEvent from './joinevent';
+import claimReward from './claimreward';
 
 
 
@@ -36,5 +37,6 @@ export default {
   createAccount,
   createEvent,
   joinEvent,
+  claimReward,
 }
 

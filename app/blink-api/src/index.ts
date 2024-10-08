@@ -28,6 +28,10 @@ router.get('/joinevent', routers.cors, routers.joinEvent.get);
 router.options('/joinevent', routers.cors, routers.joinEvent.get);
 router.post('/joinevent', routers.cors, routers.joinEvent.post);
 
+router.get('/claimreward', routers.cors, routers.claimReward.get);
+router.options('/claimreward', routers.cors, routers.claimReward.get);
+router.post('/claimreward', routers.cors, routers.claimReward.post);
+
 
 
 
