@@ -404,6 +404,54 @@ pub struct EventGuest {
     is_claimed: bool,
 } 
 
+#[account]
+#[derive(Default, Debug)]    
+pub struct EventItem{    
+    event_name: String,   
+    event_create_time: i64,
+} 
+
+impl EventItem {
+
+    pub fn get_init_account_size(event_name: &String) -> usize {
+        let mut size = 8 + 4; // anchor id + vector    
+        size += size_of::<EventItem>();    
+        size += event_name.len();
+        size
+    }
+
+    fn get_account_size(&self) -> usize {
+        let mut size = 8 + 4; // anchor id + vector    
+        size += size_of::<EventItem>();    
+        size += &self.event_name.len();    
+        size
+    }
+}
+
+#[account]
+#[derive(Default, Debug)]    
+pub struct EventList{    
+    events: Vec<EventItem>,   
+} 
+
+impl EventList {
+    pub fn get_init_account_size() -> usize {
+        let mut size = 8 + 4; // anchor id + vector    
+        size
+    }
+    fn get_account_size(&self, event_name: &String) -> usize {
+        let mut size = 8 + 4; // anchor id + vector    
+        size += size_of::<EventList>();    
+        size += EventItem::get_init_account_size(event_name);
+        for item in &self.events {
+            size += item.get_account_size();
+        }
+        size
+    }
+}
+
+
+
 
 
 #[account]
