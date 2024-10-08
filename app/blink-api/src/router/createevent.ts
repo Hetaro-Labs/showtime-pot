@@ -12,23 +12,23 @@ import * as W3 from '@solana/web3.js';
 async function get (ctx:ParameterizedContext, next:Function){
   const payload: SA.ActionGetResponse = {
     type: "action",
-    title: "PoT - Create Account",
+    title: "PoT - Create Event",
     icon: 'https://cdn.hetaro.com/solana-actions/showtime-watch.png',
-    description: "Create your new account of your PoT network",
-    label: "Create Profile",
+    description: "Create an evnet at your PoT network",
+    label: "Create Event",
     links: {
       actions: [
         {
           type: 'transaction',
-          label: "Create Profile",
-          href: '/createaccount',
+          label: "Create Event",
+          href: '/createevent',
           parameters: [
             {
               type: 'text',
-              name: "name",
-              label: "Your name", 
+              name: "event_name",
+              label: "Event name", 
               required: true,
-              patternDescription: 'Your name used in the profile',
+              patternDescription: 'Your event name',
             },
           ]
 
@@ -56,7 +56,7 @@ async function post (ctx:ParameterizedContext, next:Function){
   let tx = new W3.Transaction();
   let tiMemo = new W3.TransactionInstruction({    
     programId: new W3.PublicKey(SA.MEMO_PROGRAM_ID),    
-    data: Buffer.from('Create Profile', 'utf8'),    
+    data: Buffer.from('Create Event', 'utf8'),    
     keys: [],    
   }); 
   tx.add(tiMemo);

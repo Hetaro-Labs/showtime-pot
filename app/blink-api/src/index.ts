@@ -20,6 +20,11 @@ router.get('/createaccount', routers.cors, routers.createAccount.get);
 router.options('/createaccount', routers.cors, routers.createAccount.get);
 router.post('/createaccount', routers.cors, routers.createAccount.post);
 
+router.get('/createevent', routers.cors, routers.createEvent.get);
+router.options('/createevent', routers.cors, routers.createEvent.get);
+router.post('/createevent', routers.cors, routers.createEvent.post);
+
+
 
 app.use(logger());
 app.use(router.routes());

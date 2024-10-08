@@ -4,6 +4,7 @@ import sleep from '../lib/sleep';
 import demo from './demo';
 import actionsJSON from './actionsjson';
 import createAccount from './createaccount';
+import createEvent from './createevent';
 
 
 
@@ -32,5 +33,6 @@ export default {
   demo,
   actionsJSON,
   createAccount,
+  createEvent,
 }
 
