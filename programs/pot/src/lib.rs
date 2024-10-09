@@ -14,6 +14,9 @@ pub mod pot {
 
     use super::*;
 
+    /*
+    * Every user must create a profile and some data accounts for interactions
+    * */
     pub fn create_account(ctx: Context<CreateAccount>, data: CreateAccountArg) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         ctx.accounts.profile.name = data.name; 
@@ -23,6 +26,10 @@ pub mod pot {
         Ok(())
     }
 
+    /*
+    * An user could stake on anoter target user in order to get 
+    * higher chance to be notified
+    * */
     pub fn add_stake(ctx: Context<AddStake>, data: AddStakeArg) -> Result<()> {
         msg!("stake_account: {:?}", &ctx.accounts.stake_account);
 
@@ -64,6 +71,11 @@ pub mod pot {
         Ok(())
     }
 
+
+    /*
+    * An event host creates an event with the guests they wanna invite 
+    * 
+    * */
     pub fn create_event(ctx: Context<CreateEvent>, data: CreateEventArg) -> Result<()> {
 
 
@@ -81,7 +93,6 @@ pub mod pot {
         // remove duplication
         let mut guest_keys: HashSet<Pubkey> = data.guests.into_iter().collect();
         guest_keys.insert(ctx.accounts.signer.key());
-        //msg!("guest_key, {:?} {:?}", &guest_keys.len(), &guest_keys);
         for k in guest_keys.into_iter() {
             let g = EventGuest {
                 key: k,
@@ -109,10 +120,13 @@ pub mod pot {
 
         ctx.accounts.event_list.events.push(event_item);
 
-        //msg!("event, {:?}", &ctx.accounts.event);
         Ok(())
     }
 
+    /*
+    * Event guests needs to bet on an event to win the pot share 
+    * 
+    * */
     pub fn bet_on_event(ctx: Context<BetOnEvent>, data: BetOnEventArg) -> Result<()> {
         let bet_account = &ctx.accounts.bet_pot;
         let host = &ctx.accounts.host;
@@ -146,7 +160,6 @@ pub mod pot {
                 )?;
 
                 g.is_betted = true;
-                msg!("guest: {:?}", &g);
                 return Ok(());
 
             };
@@ -154,14 +167,19 @@ pub mod pot {
         return err!(MyError::BetOnEventNotAGuest);
     }
 
+    /*
+    * Event host needs to declare who attended the event,
+    * and the attendees needs to agree on it to claim the reward after the event
+    * 
+    * */
     pub fn declare_event_attendees(ctx: Context<DeclareEventAttendees>, data: DeclareEventAttendeesArg) -> Result<()> {
-        // TODO: check signer === event.host
+        // check signer === event.host
         if ctx.accounts.signer.key() != ctx.accounts.event.host {
-           return err!(MyError::AccountNotMatch); 
+            return err!(MyError::AccountNotMatch); 
         }
 
         if ctx.accounts.event.attendees.len() != 0 {
-           return err!(MyError::AttendeesAlreadyDeclared); 
+            return err!(MyError::AttendeesAlreadyDeclared); 
         }
         // attendees includes in betted guests 
         let mut betted_guest_keys: HashSet<Pubkey> = HashSet::new();
@@ -191,6 +209,11 @@ pub mod pot {
 
         Ok(())
     }
+
+    /*
+    * Attendees agree on the attendees declaration
+    * 
+    * */
     pub fn agree_event_attendees(ctx: Context<AgreeEventAttendees>, data: AgreeEventAttendeesArg) -> Result<()> {
         // TODO: check event.success and event
         //
@@ -214,13 +237,13 @@ pub mod pot {
         }
 
         if ctx.accounts.event.attendees.len() == 0 {
-           return err!(MyError::AttendeesNotDeclared); 
+            return err!(MyError::AttendeesNotDeclared); 
         }
 
         let attendees_set: HashSet<Pubkey> = data.attendees.into_iter().collect();
 
         if !attendees_set.contains(ctx.accounts.signer.key) {
-                return err!(MyError::NotAttendee); 
+            return err!(MyError::NotAttendee); 
         }
 
         for a in &ctx.accounts.event.attendees{
@@ -247,11 +270,6 @@ pub mod pot {
         }
 
         if done {
-            /*
-            msg!("signed: {:?}", ctx.accounts.event.signed);
-            msg!("success: {:?}", ctx.accounts.event.success);
-            msg!("guests: {:?}", ctx.accounts.event.guests);
-            */
             Ok(())
         }else{
 
@@ -259,6 +277,12 @@ pub mod pot {
         }
     }
 
+
+    /*
+    * Once the event attendees have all agreed,
+    * they can claim the bet pot
+    * 
+    * */
     pub fn claim_event_reward(ctx: Context<ClaimEventReward>, data: ClaimEventRewardArg) -> Result<()> {
 
         let bump = ctx.bumps.bet_pot;
@@ -266,9 +290,9 @@ pub mod pot {
 
         let host_key = ctx.accounts.host.key();
         let bet_pot_seeds = &[
-            b"bet_pot",    // Static string as seed
-            host_key.as_ref(),       // Event public key as seed
-            &[bump],                  // Bump seed
+            b"bet_pot",
+            host_key.as_ref(),
+            &[bump],
         ];
 
         if ctx.accounts.event.success == false {
@@ -292,7 +316,7 @@ pub mod pot {
                 bet_total += bet_lamports;
             }
         }
-        
+
         let reward_per_attendee:u64 = bet_total / ctx.accounts.event.attendees.len() as u64;
 
         let mut done = false; 
@@ -302,18 +326,19 @@ pub mod pot {
                     return err!(MyError::AttendeesAlreadyClaimed) 
                 }
 
+                //TO CHECK: this code should work for the program PDA...
                 /*
                 ctx.accounts.bet_pot.to_account_info().sub_lamports(reward_per_attendee)?;
                 ctx.accounts.signer.to_account_info().add_lamports(reward_per_attendee)?;
                 */
-                // Transfer lamports from the PDA to the signer
+
+                // Transfer reward from the bet_pot PDA to the signer
                 let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
                     &ctx.accounts.bet_pot.key(),
                     &ctx.accounts.signer.key(),
                     reward_per_attendee,
                 );
 
-                // Use `invoke_signed` to sign on behalf of the PDA
                 anchor_lang::solana_program::program::invoke_signed(
                     &transfer_instruction,
                     &[
@@ -321,8 +346,10 @@ pub mod pot {
                         ctx.accounts.signer.to_account_info(),
                         ctx.accounts.system_program.to_account_info(),
                     ],
-                    &[bet_pot_seeds], // Pass the seeds for the PDA to sign the transaction
+                    &[bet_pot_seeds],
                 )?;
+
+                // mark this guest is_claimed
                 g.is_claimed = true;
 
                 done = true;
@@ -332,9 +359,6 @@ pub mod pot {
 
 
         if done {
-
-
-
             Ok(())
         }else{
             err!(MyError::AttendeesNotMatch) 
@@ -342,7 +366,7 @@ pub mod pot {
 
     }
 
- 
+
 }
 
 #[account]    
@@ -688,6 +712,4 @@ pub enum MyError {
     #[msg("Event has not started!")]
     EventNotStarted,
 }
-
-
 
